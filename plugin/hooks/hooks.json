@@ -1,0 +1,20 @@
+{
+  "description": "Two hooks, both inert until the user turns them on with /stage-2 and /stage-3. The fence fails closed once on; the warm-start never fails the session it is attached to.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          { "type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/fence.py\"", "timeout": 5 }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          { "type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/warm-start.py\"", "timeout": 5 }
+        ]
+      }
+    ]
+  }
+}

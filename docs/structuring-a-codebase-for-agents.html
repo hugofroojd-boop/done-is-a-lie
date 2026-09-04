@@ -1,0 +1,1181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Structuring a codebase for agents</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+@page { size: A4; margin: 15mm 16mm 14mm 16mm; }
+html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+body { background:#f0f0f0; font-family:"Avenir Next","Avenir","Helvetica Neue",sans-serif; }
+@media print { body { background:#fff; } }
+
+table.flow{ width:178mm; max-width:178mm; margin:0 auto; background:#fff; border-collapse:collapse;
+  color:#3e4542; font-size:9.1pt; line-height:1.5; }
+table.flow > tbody > tr > td, table.flow > tfoot > tr > td{ padding:0; border:none; }
+tfoot .footrow td{ padding-top:1.8mm; }
+
+h1{ font-family:"Iowan Old Style",Palatino,Georgia,serif; font-weight:400; font-size:29pt;
+    line-height:1.12; color:#1a1c1b; letter-spacing:-0.2pt; }
+h1 em{ font-style:italic; color:#2f6b58; }
+h2{ font-family:"Iowan Old Style",Palatino,Georgia,serif; font-weight:400; font-size:16.6pt;
+    color:#1a1c1b; letter-spacing:-0.1pt; }
+h3{ font-family:"Avenir Next",sans-serif; font-weight:600; font-size:9.4pt; color:#1a1c1b;
+    margin-bottom:2.2mm; line-height:1.3; }
+h4{ font-family:"Avenir Next",sans-serif; font-weight:600; font-size:8.8pt; color:#1a1c1b;
+    margin-bottom:1mm; }
+p{ margin-bottom:2.4mm; }
+p:last-child{ margin-bottom:0; }
+.deck{ font-family:"Iowan Old Style",Palatino,Georgia,serif; font-size:11.4pt; line-height:1.5;
+    color:#3e4542; }
+.eyebrow{ font-family:Menlo,monospace; font-size:6.5pt; letter-spacing:1.7pt; color:#2f6b58;
+    text-transform:uppercase; }
+.figcap{ font-family:Menlo,monospace; font-size:6pt; letter-spacing:1.1pt; color:#8a918b;
+    text-transform:uppercase; }
+.note{ font-size:7.9pt; color:#7d857f; line-height:1.46; }
+.mono{ font-family:Menlo,monospace; font-size:7.9pt; }
+strong{ font-weight:600; color:#1a1c1b; }
+em{ font-style:italic; }
+.g{ color:#2f6b58; } .am{ color:#a8792c; } .rd{ color:#9b3d38; }
+
+.mast{ display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:5mm; }
+.mast .who{ text-align:right; }
+.mast .who .nm{ font-family:"Iowan Old Style",Palatino,Georgia,serif; font-size:11pt; color:#1a1c1b; }
+.mast .who .st{ font-family:Menlo,monospace; font-size:6.4pt; color:#2f6b58; letter-spacing:0.4pt; }
+.foot{ border-top:0.3mm solid #d9ded9; padding-top:1.8mm; display:flex; justify-content:space-between;
+    font-family:Menlo,monospace; font-size:6pt; letter-spacing:0.7pt; }
+.foot .l{ color:#8a918b; text-transform:uppercase; }
+.foot .r{ color:#2f6b58; display:flex; gap:7mm; }
+
+.sechead{ border-top:0.5mm solid #1a1c1b; padding-top:2.4mm; margin-bottom:4.4mm;
+    display:flex; align-items:baseline; gap:3mm; break-after:avoid; }
+.sechead .n{ font-family:Menlo,monospace; font-size:6.8pt; color:#2f6b58; flex:0 0 auto; }
+.sechead h2{ flex:0 1 auto; }
+.sechead.brk{ break-before: page; page-break-before: always; }
+
+.cols2{ display:grid; grid-template-columns:1fr 1fr; gap:5mm 8mm; }
+.cols3{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:5mm 6mm; }
+.panel{ background:#f8f7f4; border:0.25mm solid #e2e5e0; border-radius:1mm; padding:3mm 3.4mm;
+    break-inside:avoid; }
+.panel.tint{ background:#f3f7f4; border-color:#d6e3da; }
+.panel.warn{ background:#fbf6ec; border-color:#ecdfc4; }
+.panel.neg{ background:#faf1f0; border-color:#eed8d6; }
+.panel.cool{ background:#f4f6f9; border-color:#dbe2ea; }
+
+table{ border-collapse:collapse; width:100%; font-size:8.1pt; }
+th{ font-family:Menlo,monospace; font-size:5.8pt; letter-spacing:0.9pt; text-transform:uppercase;
+    color:#8a918b; text-align:left; padding:1.4mm 2mm 1.2mm 0; border-bottom:0.3mm solid #cfd5cf;
+    font-weight:normal; }
+td{ padding:1.3mm 2mm 1.3mm 0; border-bottom:0.2mm solid #eceee9; vertical-align:top; }
+td.num{ font-family:Menlo,monospace; font-variant-numeric:tabular-nums; white-space:nowrap; }
+tr:last-child td{ border-bottom:none; }
+tr{ break-inside:avoid; }
+table.tight td, table.tight th{ font-size:7.6pt; padding-top:1.1mm; padding-bottom:1.1mm; }
+table.airy td, table.airy th{ padding-top:2.4mm; padding-bottom:2.4mm; }
+table.dense td, table.dense th{ font-size:7.1pt; padding-top:0.7mm; padding-bottom:0.7mm; line-height:1.36; }
+table.dense .note{ font-size:7.1pt; line-height:1.4; }
+
+ul{ list-style:none; }
+li{ position:relative; padding-left:3.4mm; margin-bottom:1.5mm; }
+li:before{ content:"·"; position:absolute; left:0.8mm; color:#2f6b58; font-weight:700; }
+li:last-child{ margin-bottom:0; }
+
+svg{ display:block; width:100%; height:auto; }
+.figbox{ margin:3mm 0; break-inside:avoid; } .figbox svg{width:100%;height:auto}
+.figbox .figcap{ margin-top:1.6mm; }
+.hero{ margin:0 -2mm; }
+
+.oneline{ font-family:"Iowan Old Style",Palatino,Georgia,serif; font-size:14pt; line-height:1.35;
+    color:#1a1c1b; font-style:italic; }
+
+.codeblk{ margin:0 0 1.1mm 0; break-inside:avoid; }
+.codelab{ font-family:Menlo,monospace; font-size:5.8pt; letter-spacing:1pt; color:#8a918b;
+    text-transform:none; margin-bottom:1.1mm; }
+pre.code{ font-family:Menlo,monospace; font-size:7pt; line-height:1.14; color:#333936;
+    background:#f8f7f4; border:0.25mm solid #e2e5e0; border-radius:1mm;
+    padding:1.9mm 2.6mm; white-space:pre; overflow:hidden; }
+pre.code .cm{ color:#9aa19b; }
+pre.code.wrap{ white-space:pre-wrap; word-break:break-word; overflow:visible; }
+
+.posts{ display:grid; grid-template-columns:1fr 1fr; gap:4.2mm 8mm; }
+.posts > div{ border-top:0.3mm solid #d9ded9; padding-top:2.2mm; break-inside:avoid; }
+.posts .ph{ font-family:"Avenir Next",sans-serif; font-weight:600; font-size:8.8pt; color:#1a1c1b;
+    line-height:1.3; margin-bottom:1.6mm; }
+.posts .pb{ font-size:8.2pt; line-height:1.46; }
+
+.twocol{ display:grid; grid-template-columns:1fr 1fr; gap:0 8mm; }
+.twocol > div{ border-top:0.3mm solid #d9ded9; padding-top:2.2mm; }
+.twocol h4{ color:#2f6b58; font-family:Menlo,monospace; font-size:6pt; letter-spacing:1pt;
+    text-transform:uppercase; margin-bottom:1.6mm; }
+.twocol.neg h4{ color:#9b3d38; }
+.twocol ul li{ font-size:8.6pt; line-height:1.5; margin-bottom:2.2mm; }
+
+.quote{ font-family:"Iowan Old Style",Palatino,Georgia,serif; font-style:italic;
+    font-size:10.4pt; line-height:1.42; color:#1a1c1b; }
+
+code{ font-family:Menlo,monospace; font-size:7.5pt; color:#1a1c1b; }
+
+.ailab{ font-family:Menlo,monospace; font-size:5.8pt; letter-spacing:1.2pt; color:#2f6b58;
+    text-transform:uppercase; margin-bottom:1.1mm; }
+.humanline{ font-family:"Iowan Old Style",Palatino,Georgia,serif; font-style:italic;
+    font-size:7.8pt; color:#7d857f; line-height:1.32; margin-bottom:0.8mm; }
+.facts{ display:grid; grid-template-columns:1fr 1fr; gap:4.5mm 8mm; }
+
+/* — v2-only additions: plain prose, no scaffolding — */
+.stagelede{ font-family:"Iowan Old Style",Palatino,Georgia,serif; font-style:italic;
+    font-size:10.6pt; line-height:1.4; color:#5c655e; margin-bottom:5mm; max-width:174mm; }
+.prose p{ font-size:8.9pt; line-height:1.52; margin-bottom:2.8mm; }
+.prose p:last-child{ margin-bottom:0; }
+.leadin{ font-weight:600; color:#1a1c1b; }
+.filehead{ font-family:Menlo,monospace; font-size:7.4pt; color:#1a1c1b; margin-bottom:0.8mm; }
+</style>
+</head>
+<body>
+<table class="flow">
+<tfoot>
+  <tr class="footrow"><td>
+    <div class="foot"><div class="l">Hugo Fröjd</div>
+      <div class="r"><span>github.com/hugofroojd-boop</span><span>x.com/Hugofrojd</span></div></div>
+  </td></tr>
+</tfoot>
+<tbody><tr><td>
+
+<!-- ===================== COVER ===================== -->
+  <div class="mast">
+    <div class="eyebrow">A working setup for Claude Code · September 2026</div>
+    <div class="who"><div class="nm">Hugo Fröjd</div><div class="st">github.com/hugofroojd-boop</div></div>
+  </div>
+
+  <h1 style="font-size:31pt; margin-top:1mm;">Structuring a codebase so an <em>agent</em> can be trusted in it</h1>
+  <p class="deck" style="margin-top:4mm; max-width:178mm; font-size:11.2pt;">Four files, one habit, and a rule
+  about when to build anything more. This is the minimum that makes an agent start warm, stay
+  inside its lane, and stop claiming work it never ran — and a build order that lets the next
+  failure, not this document, decide what comes next.</p>
+  <div class="figbox" style="margin-top:3mm; max-width:166mm;">
+    
+    <svg viewBox="0 0 673 712" xmlns="http://www.w3.org/2000/svg" font-family="Menlo, monospace">
+<defs><marker id="ag" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="#2f6b58"/></marker><marker id="ad" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="#8a918b"/></marker></defs>
+<text x="0" y="8" font-size="6.6" fill="#2f6b58" letter-spacing="1.3">YOU — TWO OF THE TEN STEPS IN A CHANGE ARE YOURS, AND BOTH ARE A YES OR A NO</text>
+<rect x="10" y="14" width="321" height="36" rx="2.5" fill="#f8f7f4" stroke="#d9ddd8" stroke-width="0.8"/>
+<text x="18" y="27" font-size="7.6" fill="#1a1c1b" font-family="Avenir Next, sans-serif" font-weight="600">formulate</text>
+<text x="18" y="37" font-size="6.2" fill="#8a918b" font-family="Avenir Next, sans-serif">one sentence: what "done" will look like, before the first line</text>
+<rect x="342" y="14" width="321" height="36" rx="2.5" fill="#f8f7f4" stroke="#d9ddd8" stroke-width="0.8"/>
+<text x="350" y="27" font-size="7.6" fill="#1a1c1b" font-family="Avenir Next, sans-serif" font-weight="600">judge</text>
+<text x="350" y="37" font-size="6.2" fill="#8a918b" font-family="Avenir Next, sans-serif">never accept "done" without the command output pasted</text>
+<path d="M170,52 L170,68" fill="none" stroke="#2f6b58" stroke-width="0.9" marker-end="url(#ag)"/>
+<path d="M502,52 L502,68" fill="none" stroke="#2f6b58" stroke-width="0.9" marker-end="url(#ag)"/>
+<rect x="0" y="70" width="673" height="118" rx="3" fill="#fff" stroke="#d9ddd8" stroke-width="0.9"/>
+<text x="9" y="82" font-size="6.6" fill="#2f6b58" letter-spacing="1.3">STAGE 01 · THE CORE · NOW — ONE REPOSITORY IS THE WORKSPACE; AN AFTERNOON, THEN TWO MINUTES A SESSION</text>
+<rect x="10" y="90" width="155" height="32" rx="2.5" fill="#f8f7f4" stroke="#d9ddd8" stroke-width="0.8"/>
+<text x="18" y="103" font-size="7.6" fill="#1a1c1b">CLAUDE.md</text>
+<text x="18" y="113" font-size="6.2" fill="#8a918b" font-family="Avenir Next, sans-serif">instructions — short; status never here</text>
+<rect x="176" y="90" width="155" height="32" rx="2.5" fill="#f8f7f4" stroke="#d9ddd8" stroke-width="0.8"/>
+<text x="184" y="103" font-size="7.6" fill="#1a1c1b">NON-GOALS.md</text>
+<text x="184" y="113" font-size="6.2" fill="#8a918b" font-family="Avenir Next, sans-serif">what never gets built — five lines</text>
+<rect x="342" y="90" width="155" height="32" rx="2.5" fill="#f8f7f4" stroke="#d9ddd8" stroke-width="0.8"/>
+<text x="350" y="103" font-size="7.6" fill="#1a1c1b">STATE.md</text>
+<text x="350" y="113" font-size="6.2" fill="#8a918b" font-family="Avenir Next, sans-serif">four lines, rewritten every session</text>
+<rect x="508" y="90" width="155" height="32" rx="2.5" fill="#f8f7f4" stroke="#d9ddd8" stroke-width="0.8"/>
+<text x="516" y="103" font-size="7.6" fill="#1a1c1b">LESSONS.md</text>
+<text x="516" y="113" font-size="6.2" fill="#8a918b" font-family="Avenir Next, sans-serif">empty today; a number per lesson later</text>
+<text x="10" y="140" font-size="6.6" fill="#2f6b58" letter-spacing="1.3">AND ONE HABIT — THE ONLY PART THAT CANNOT BE COPIED, ONLY KEPT</text>
+<rect x="10" y="148" width="155" height="20" rx="2.5" fill="#fff" stroke="#2f6b58" stroke-width="0.8"/>
+<text x="87.5" y="160.6" font-size="7" fill="#1a1c1b" text-anchor="middle" font-family="Avenir Next, sans-serif" font-weight="600">read STATE first</text>
+<rect x="216" y="148" width="75" height="20" rx="2.5" fill="#fff" stroke="#d9ddd8" stroke-width="0.8"/>
+<text x="253.5" y="160.6" font-size="7" fill="#1a1c1b" text-anchor="middle" font-family="Avenir Next, sans-serif" font-weight="600">work</text>
+<rect x="353" y="148" width="155" height="20" rx="2.5" fill="#fff" stroke="#2f6b58" stroke-width="0.8"/>
+<text x="430.5" y="160.6" font-size="7" fill="#1a1c1b" text-anchor="middle" font-family="Avenir Next, sans-serif" font-weight="600">update STATE last</text>
+<path d="M167,158 L214,158" fill="none" stroke="#2f6b58" stroke-width="0.9" marker-end="url(#ag)"/>
+<path d="M293,158 L351,158" fill="none" stroke="#2f6b58" stroke-width="0.9" marker-end="url(#ag)"/>
+<path d="M430.5,169 L430.5,180 L87.5,180 L87.5,170" fill="none" stroke="#2f6b58" stroke-width="0.9" marker-end="url(#ag)"/>
+<text x="542" y="160" font-size="6.2" fill="#8a918b" font-family="Avenir Next, sans-serif">two minutes a session</text>
+<path d="M60,190 L60,204" fill="none" stroke="#8a918b" stroke-width="0.9" marker-end="url(#ad)"/>
+<text x="70" y="199" font-size="6.2" fill="#8a918b" font-family="Avenir Next, sans-serif">trigger — a rule in CLAUDE.md has been ignored once</text>
+<rect x="0" y="208" width="673" height="80" rx="3" fill="#fff" stroke="#b9bfb9" stroke-width="0.9" stroke-dasharray='3.5 2.5'/>
+<text x="9" y="220" font-size="6.6" fill="#2f6b58" letter-spacing="1.3">STAGE 02 · ONE GATE · AN HOUR — A RULE IN A PROMPT IS A REQUEST; A RULE IN A HOOK IS A BOUNDARY</text>
+<rect x="10" y="228" width="155" height="32" rx="2.5" fill="#f8f7f4" stroke="#d9ddd8" stroke-width="0.8"/>
+<text x="18" y="241" font-size="7.6" fill="#1a1c1b" font-family="Avenir Next, sans-serif" font-weight="600">the agent</text>
+<text x="18" y="251" font-size="6.2" fill="#8a918b" font-family="Avenir Next, sans-serif">wants to write a file</text>
+<path d="M167,244 L174,244" fill="none" stroke="#2f6b58" stroke-width="0.9" marker-end="url(#ag)"/>
+<rect x="176" y="222" width="155" height="46" rx="2.5" fill="#fff" stroke="#2f6b58" stroke-width="0.8"/>
+<text x="184" y="235" font-size="7.6" fill="#1a1c1b">fence.py</text>
+<text x="184" y="245" font-size="6.2" fill="#8a918b" font-family="Avenir Next, sans-serif">is the path inside the repository?</text>
+<text x="184" y="262" font-size="6.2" fill="#8a918b" font-family="Avenir Next, sans-serif">cannot parse it → also no</text>
+<path d="M333,238 L340,232" fill="none" stroke="#2f6b58" stroke-width="0.9" marker-end="url(#ag)"/>
+<path d="M333,250 L340,258" fill="none" stroke="#8a918b" stroke-width="0.9" marker-end="url(#ad)"/>
+<rect x="342" y="222" width="155" height="20" rx="2.5" fill="#fff" stroke="#2f6b58" stroke-width="0.8"/>
+<text x="350" y="235" font-size="7.6" fill="#1a1c1b" font-family="Avenir Next, sans-serif" font-weight="600">exit 0 — the write happens</text>
+<rect x="342" y="248" width="155" height="20" rx="2.5" fill="#fff" stroke="#1a1c1b" stroke-width="0.8"/>
+<text x="350" y="261" font-size="7.6" fill="#1a1c1b" font-family="Avenir Next, sans-serif" font-weight="600">exit 2 — blocked, model reads why</text>
+<text x="516" y="235" font-size="7.6" fill="#1a1c1b" font-family="Avenir Next, sans-serif" font-weight="600">fails closed</text>
+<text x="516" y="245" font-size="6.2" fill="#8a918b" font-family="Avenir Next, sans-serif">unparseable input blocks, loudly</text>
+<text x="516" y="260" font-size="7.6" fill="#1a1c1b" font-family="Avenir Next, sans-serif" font-weight="600">boring</text>
+<text x="516" y="270" font-size="6.2" fill="#8a918b" font-family="Avenir Next, sans-serif">no network, no state — test it once switched off</text>
+<path d="M60,290 L60,304" fill="none" stroke="#8a918b" stroke-width="0.9" marker-end="url(#ad)"/>
+<text x="70" y="299" font-size="6.2" fill="#8a918b" font-family="Avenir Next, sans-serif">trigger — you have re-explained the same project twice</text>
+<rect x="0" y="308" width="673" height="86" rx="3" fill="#fff" stroke="#b9bfb9" stroke-width="0.9" stroke-dasharray='3.5 2.5'/>
+<text x="9" y="320" font-size="6.6" fill="#2f6b58" letter-spacing="1.3">STAGE 03 · MEMORY · HALF A DAY — AUTOMATE THE READING, NOT THE WRITING</text>
+<rect x="10" y="328" width="155" height="46" rx="2.5" fill="#f8f7f4" stroke="#d9ddd8" stroke-width="0.8"/>
+<text x="18" y="341" font-size="7.6" fill="#1a1c1b">/wrap</text>
+<text x="18" y="351" font-size="6.2" fill="#8a918b" font-family="Avenir Next, sans-serif">a skill: you say the word at the end;</text>
+<text x="18" y="367" font-size="6.2" fill="#8a918b" font-family="Avenir Next, sans-serif">it rewrites STATE from what happened</text>
+<path d="M167,351 L174,351" fill="none" stroke="#2f6b58" stroke-width="0.9" marker-end="url(#ag)"/>
+<rect x="176" y="328" width="155" height="46" rx="2.5" fill="#fff" stroke="#2f6b58" stroke-width="0.8"/>
+<text x="184" y="341" font-size="7.6" fill="#1a1c1b">STATE.md</text>
+<text x="184" y="352" font-size="5.8" fill="#1a1c1b">Last done · In progress</text>
+<text x="184" y="361" font-size="5.8" fill="#1a1c1b">Next · Blocked</text>
+<text x="184" y="370" font-size="6.2" fill="#8a918b" font-family="Avenir Next, sans-serif">LESSONS.md, each with a number</text>
+<path d="M333,351 L340,351" fill="none" stroke="#2f6b58" stroke-width="0.9" marker-end="url(#ag)"/>
+<rect x="342" y="328" width="155" height="46" rx="2.5" fill="#f8f7f4" stroke="#d9ddd8" stroke-width="0.8"/>
+<text x="350" y="341" font-size="7.6" fill="#1a1c1b">warm-start.py</text>
+<text x="350" y="351" font-size="6.2" fill="#8a918b" font-family="Avenir Next, sans-serif">a hook: at session start it prints</text>
+<text x="350" y="367" font-size="6.2" fill="#8a918b" font-family="Avenir Next, sans-serif">STATE and every lesson ≥ 0.7</text>
+<path d="M499,351 L506,351" fill="none" stroke="#2f6b58" stroke-width="0.9" marker-end="url(#ag)"/>
+<rect x="508" y="328" width="155" height="46" rx="2.5" fill="#fff" stroke="#2f6b58" stroke-width="0.8"/>
+<text x="516" y="341" font-size="7.6" fill="#1a1c1b" font-family="Avenir Next, sans-serif" font-weight="600">into context</text>
+<text x="516" y="352" font-size="5.8" fill="#2f6b58">== CONTEXT, NOT ORDERS ==</text>
+<text x="516" y="362" font-size="6.2" fill="#8a918b" font-family="Avenir Next, sans-serif">never breaks the session</text>
+<text x="516" y="371" font-size="6.2" fill="#8a918b" font-family="Avenir Next, sans-serif">it is attached to — exit 0</text>
+<path d="M60,396 L60,410" fill="none" stroke="#8a918b" stroke-width="0.9" marker-end="url(#ad)"/>
+<text x="70" y="405" font-size="6.2" fill="#8a918b" font-family="Avenir Next, sans-serif">trigger — one session no longer has room to both build and judge</text>
+<rect x="0" y="414" width="673" height="112" rx="3" fill="#fff" stroke="#b9bfb9" stroke-width="0.9" stroke-dasharray='3.5 2.5'/>
+<text x="9" y="426" font-size="6.6" fill="#2f6b58" letter-spacing="1.3">STAGE 04 · SUBAGENTS · A DAY — THE MAIN SESSION KEEPS ITS CONTEXT FOR JUDGING</text>
+<rect x="10" y="434" width="155" height="60" rx="2.5" fill="#f8f7f4" stroke="#d9ddd8" stroke-width="0.8"/>
+<text x="18" y="447" font-size="7.6" fill="#1a1c1b" font-family="Avenir Next, sans-serif" font-weight="600">main session</text>
+<text x="18" y="457" font-size="6.2" fill="#8a918b" font-family="Avenir Next, sans-serif">reasons · splits the work</text>
+<text x="18" y="467" font-size="6.2" fill="#8a918b" font-family="Avenir Next, sans-serif">writes brief.md · judges</text>
+<text x="18" y="477" font-size="6.2" fill="#8a918b" font-family="Avenir Next, sans-serif">does not read the sources</text>
+<path d="M167,464 L174,464" fill="none" stroke="#2f6b58" stroke-width="0.9" marker-end="url(#ag)"/>
+<rect x="176" y="432" width="321" height="20" rx="2.5" fill="#f8f7f4" stroke="#d9ddd8" stroke-width="0.8"/>
+<text x="184" y="445" font-size="7.6" fill="#1a1c1b" font-family="Avenir Next, sans-serif" font-weight="600">agent A · builds</text>
+<text x="326" y="445" font-size="6.2" fill="#8a918b" font-family="Avenir Next, sans-serif">its own file, its own branch</text>
+<rect x="176" y="456" width="321" height="20" rx="2.5" fill="#f8f7f4" stroke="#d9ddd8" stroke-width="0.8"/>
+<text x="184" y="469" font-size="7.6" fill="#1a1c1b" font-family="Avenir Next, sans-serif" font-weight="600">agent B · builds</text>
+<text x="326" y="469" font-size="6.2" fill="#8a918b" font-family="Avenir Next, sans-serif">its own file — never the same one</text>
+<rect x="176" y="480" width="321" height="20" rx="2.5" fill="#f8f7f4" stroke="#d9ddd8" stroke-width="0.8"/>
+<text x="184" y="493" font-size="7.6" fill="#1a1c1b" font-family="Avenir Next, sans-serif" font-weight="600">agent C · reviews</text>
+<text x="326" y="493" font-size="6.2" fill="#8a918b" font-family="Avenir Next, sans-serif">read-only · file + line + repro</text>
+<line x1="497" y1="442" x2="502" y2="442" stroke="#2f6b58" stroke-width="0.9"/>
+<line x1="497" y1="466" x2="502" y2="466" stroke="#2f6b58" stroke-width="0.9"/>
+<line x1="497" y1="490" x2="502" y2="490" stroke="#2f6b58" stroke-width="0.9"/>
+<line x1="502" y1="442" x2="502" y2="490" stroke="#2f6b58" stroke-width="0.9"/>
+<path d="M502,466 L507,466" fill="none" stroke="#2f6b58" stroke-width="0.9" marker-end="url(#ag)"/>
+<rect x="508" y="440" width="155" height="52" rx="2.5" fill="#fff" stroke="#2f6b58" stroke-width="0.8"/>
+<text x="516" y="453" font-size="7.6" fill="#1a1c1b" font-family="Avenir Next, sans-serif" font-weight="600">report</text>
+<text x="516" y="463" font-size="6.2" fill="#8a918b" font-family="Avenir Next, sans-serif">what ran · output pasted</text>
+<text x="516" y="472" font-size="6.2" fill="#8a918b" font-family="Avenir Next, sans-serif">what it could not check —</text>
+<text x="516" y="482" font-size="6.2" fill="#8a918b" font-family="Avenir Next, sans-serif">"done" is the most common lie</text>
+<path d="M585.5,494 L585.5,512 L87.5,512 L87.5,497" fill="none" stroke="#8a918b" stroke-width="0.8" marker-end="url(#ad)"/>
+<rect x="196" y="507" width="200" height="10" rx="0" fill="#fff" stroke="none" stroke-width="0"/>
+<text x="296" y="514.5" font-size="6.2" fill="#8a918b" text-anchor="middle" font-family="Avenir Next, sans-serif">correction as a message, not a restart</text>
+<line x1="0" y1="540" x2="673" y2="540" stroke="#d9ddd8" stroke-width="0.7"/>
+<text x="0" y="552" font-size="6.6" fill="#2f6b58" letter-spacing="1.3">NOT YET — EACH HAS THE FAILURE THAT WOULD JUSTIFY IT</text>
+<rect x="10" y="558" width="210" height="36" rx="2.5" fill="#f8f7f4" stroke="#d9ddd8" stroke-width="0.8" stroke-dasharray='3.5 2.5'/>
+<text x="18" y="571" font-size="7.6" fill="#1a1c1b" font-family="Avenir Next, sans-serif" font-weight="600">05 · unattended work</text>
+<text x="18" y="581" font-size="6.2" fill="#8a918b" font-family="Avenir Next, sans-serif">when you want work done while not watching —</text>
+<text x="18" y="590" font-size="6.2" fill="#8a918b" font-family="Avenir Next, sans-serif">and know what you do if it goes wrong at 3 a.m.</text>
+<rect x="231" y="558" width="210" height="36" rx="2.5" fill="#f8f7f4" stroke="#d9ddd8" stroke-width="0.8" stroke-dasharray='3.5 2.5'/>
+<text x="239" y="571" font-size="7.6" fill="#1a1c1b" font-family="Avenir Next, sans-serif" font-weight="600">06 · measure yourself</text>
+<text x="239" y="581" font-size="6.2" fill="#8a918b" font-family="Avenir Next, sans-serif">when you wrote a number about your own</text>
+<text x="239" y="590" font-size="6.2" fill="#8a918b" font-family="Avenir Next, sans-serif">system by hand — earlier than feels needed</text>
+<rect x="453" y="558" width="210" height="36" rx="2.5" fill="#f8f7f4" stroke="#d9ddd8" stroke-width="0.8" stroke-dasharray='3.5 2.5'/>
+<text x="461" y="571" font-size="7.6" fill="#1a1c1b" font-family="Avenir Next, sans-serif" font-weight="600">tools and MCP servers</text>
+<text x="461" y="581" font-size="6.2" fill="#8a918b" font-family="Avenir Next, sans-serif">when a task has failed for lack of one —</text>
+<text x="461" y="590" font-size="6.2" fill="#8a918b" font-family="Avenir Next, sans-serif">every tool costs context, used or not</text>
+<line x1="0" y1="612" x2="673" y2="612" stroke="#d9ddd8" stroke-width="0.7"/>
+<text x="10" y="626" font-size="6.6" fill="#2f6b58" letter-spacing="1.3">A MECHANISM ONLY AFTER THE FAILURE</text>
+<text x="10" y="640" font-size="6.2" fill="#1a1c1b" font-family="Avenir Next, sans-serif">Once if it was expensive, twice if it was</text>
+<text x="10" y="650" font-size="6.2" fill="#1a1c1b" font-family="Avenir Next, sans-serif">cheap. Otherwise not at all.</text>
+<text x="231" y="626" font-size="6.6" fill="#2f6b58" letter-spacing="1.3">GATES AND HABITS</text>
+<text x="231" y="640" font-size="6.2" fill="#1a1c1b" font-family="Avenir Next, sans-serif">A gate cannot be forgotten. A habit fails</text>
+<text x="231" y="650" font-size="6.2" fill="#1a1c1b" font-family="Avenir Next, sans-serif">silently — fine, as long as you know which.</text>
+<text x="453" y="626" font-size="6.6" fill="#2f6b58" letter-spacing="1.3">DISTRUST YOUR OWN DESCRIPTION</text>
+<text x="453" y="640" font-size="6.2" fill="#1a1c1b" font-family="Avenir Next, sans-serif">It was true when you wrote it. Check it</text>
+<text x="453" y="650" font-size="6.2" fill="#1a1c1b" font-family="Avenir Next, sans-serif">against what actually ran; fix the description.</text>
+</svg>
+    <div class="figcap">Fig. 1 — the whole system on one page. You at the top, stage 1 built now, everything below it after its own failure. Dashed means not built yet.</div>
+  </div>
+  <div style="break-after:page; page-break-after:always; height:0;"></div>
+
+
+  <div class="panel" style="margin-top:6mm; padding:4.6mm 5mm; max-width:174mm;">
+    <p style="font-size:8.8pt; line-height:1.5;"><strong>In one paragraph.</strong> A coding agent
+    forgets between sessions, sees only what is in its context, says &quot;done&quot; before it is
+    done, and builds more than you asked for. Four files are the smallest setup I have found useful against those four facts —
+    <code>STATE.md</code>, <code>CLAUDE.md</code>, <code>NON-GOALS.md</code>, and a habit of never
+    accepting &quot;done&quot; without the output — and cost two minutes a session. Everything
+    beyond that is a mechanism with a trigger: a gate once a rule has been ignored, a memory hook
+    once you have re-explained a project, subagents once one session can no longer both build and
+    judge, and so on up to measuring your own system. Build each one when its trigger fires, not
+    before. This document is the four files, the six triggers, and the code for the first three
+    stages.</p>
+  </div>
+
+  <p class="deck" style="margin-top:6mm; max-width:174mm; font-size:12pt;">Four files, one habit, and a rule
+  about when to build anything more. This is the minimum that makes an agent start warm, stay
+  inside its lane, and stop claiming work it never ran — and a build order that lets the next
+  failure, not this document, decide what comes next.</p>
+
+  <div class="panel tint" style="margin-top:7mm; padding:5mm 5.4mm;">
+    <h3 style="font-size:10pt; margin-bottom:2.2mm;">How to use this document</h3>
+    <p style="font-size:9pt; line-height:1.5;">Hand this to your Claude Code with one
+    instruction: <em>&quot;Read this. Build stage 1 only. Then stop and tell me what you
+    built.&quot;</em> Do not ask it to build everything. Everything after stage 1 is an answer to
+    a failure you have not had yet, and a mechanism you cannot trace to a specific incident is one
+    you will not maintain.</p>
+    <p style="font-size:9pt; line-height:1.5;">If your agent did not stop after stage 1, or built
+    something else, open an issue with what it built. That is the data this document does not have
+    yet.</p>
+    <p style="font-size:9pt; line-height:1.5; margin-top:2mm;">Or install it. In Claude Code: <code>/plugin marketplace add hugofroojd-boop/done-is-a-lie</code>, then <code>/plugin install done-is-a-lie@done-is-a-lie</code>, then inside your repository <code>/done-is-a-lie:stage-1</code>. It writes the four files and stops. The gate and the memory hook come with it, switched off, until you name the failure that earns them.</p>
+  </div>
+
+<!-- ===================== WHY STAGE 1 FIRST ===================== -->
+  <div class="sechead" style="margin-top:7mm;"><h2 style="font-size:14.2pt;">Why stage 1 first, and why the rest waits</h2></div>
+
+  <div class="prose" style="max-width:174mm; font-size:8.5pt;">
+    <p>Not because the later stages are wrong. Because building them ahead of the failure is how a setup becomes shelfware. The rule every mechanism below obeys: it has a failure it prevents, a boundary it enforces, and a way to test that it works.</p>
+    <p>This is measured, not assumed. Over 651 sessions on the author's own machine (measured August 2026), the Skill tool fired 35 times; of 75 skills written, 4 were ever invoked. Three separate memory systems — each a file the agent was supposed to write at the end of a session — died in the same week of August 2026, for the same reason: writing them was a chore, and chores do not get done. What survived was the one mechanism that ran by itself, at a fixed moment, without anyone
+    remembering.</p>
+    <p>The later stages are not an afterthought — they are where the
+    leverage is, once earned. A gate is the difference between a rule you hope holds and one that
+    cannot be forgotten. A memory hook is the difference between explaining the project every
+    morning and an agent that starts warm. Subagents are how one session keeps enough context to say
+    no. Each of those is worth building the day its trigger fires, and a waste of a week the day
+    before.</p>
+    <p>So: four files that cost two minutes a session, one habit, and then
+    wait. Stages 2 and 3 are in this document in full, as code, for the day a rule gets ignored or a
+    project gets re-explained. Stages 4–6 are here as triggers only. When you recognise the trigger,
+    you will know what to build; until then the description would only tempt you.</p>
+    <p>This document was tested the way it asks to be used: handed to an agent with no other
+    context, in an empty repository. It built the four files and stopped. It also found that the
+    CLAUDE.md template contradicted the NON-GOALS.md it pointed to — the same fact in two files, the
+    exact failure section 08 warns about. That is fixed below. It is also the argument for stage 6:
+    distrust your own description of the system, including this one.</p>
+  </div>
+
+<!-- ===================== 00 ===================== -->
+  <div class="sechead" style="margin-top:5.5mm; margin-bottom:3.2mm;">
+    <span class="n">00</span><h2 style="font-size:14.6pt;">How an agent actually works</h2>
+  </div>
+
+  <p class="deck" style="margin-bottom:4mm; max-width:174mm; font-size:10.4pt;">None of the rules
+  below are about the AI being clever or stupid. They are about four plain facts of how a coding
+  agent works — and each of the four files in stage 1 answers one of them.</p>
+
+  <div class="facts">
+    <div class="panel" style="padding:3.4mm 3.8mm;">
+      <p style="font-size:8.2pt; line-height:1.42;"><span class="leadin">It cannot be relied on to
+      remember → <code>STATE.md</code>.</span> A <em>session</em> is one conversation with the
+      agent: you open it, work, close it. When it closes, whatever the agent knew about the project
+      cannot be relied on to be there next time — treat every session as a new colleague on their
+      first morning. So the project's current state has to live in a file the agent reads first.
+      Four lines are enough: what was done last, what is in progress, what comes next, what is
+      blocked.</p>
+    </div>
+    <div class="panel" style="padding:3.4mm 3.8mm;">
+      <p style="font-size:8.2pt; line-height:1.42;"><span class="leadin">Its actions are limited by
+      what is in its context → <code>CLAUDE.md</code>.</span> The agent's <em>context</em> is
+      everything it has read so far in this session — your messages, the files it opened, the
+      output of commands it ran. That context has a ceiling; when it fills up, the oldest parts fall
+      out. This is why long instruction files are bad — they crowd out the work — and why telling it
+      things once, in one short file it always reads, beats telling it in every conversation.</p>
+    </div>
+    <div class="panel" style="padding:3.4mm 3.8mm;">
+      <p style="font-size:8.2pt; line-height:1.42;"><span class="leadin">It says &quot;done&quot;
+      before it is done → the verification habit.</span> An agent under pressure to finish can
+      report success on work it never ran. Not from malice — it predicts what a finished report
+      looks like and writes it. The first defence is to never accept &quot;done&quot; without seeing
+      the command output, pasted. Later, a <em>hook</em> can enforce that; tests and a second pair
+      of eyes are the others.</p>
+    </div>
+    <div class="panel" style="padding:3.4mm 3.8mm;">
+      <p style="font-size:8.2pt; line-height:1.42;"><span class="leadin">It builds more than you asked
+      for → <code>NON-GOALS.md</code>.</span> A capable agent, given a task, will often add the
+      settings page, the abstraction layer and the three folders it thinks you will want next.
+      Expansion is its default, not an accident. A short list of what must <em>never</em> be built is
+      the cheapest control you will ever write — and the one most people skip.</p>
+    </div>
+  </div>
+
+  <p style="font-size:8.6pt; line-height:1.5; max-width:174mm; margin-top:4mm;">Words used
+  below: a <strong>session</strong> is one conversation with the agent, start to close.
+  <strong>Context</strong> is everything it has read so far in this session; it has a ceiling. A
+  <strong>hook</strong> is a small script Claude Code runs by itself at a fixed moment — before a
+  file write, at session start; rules in a hook cannot be forgotten, rules in a text file can. A
+  <strong>gate</strong> is a hook that can say no. A <strong>skill</strong> is a short file that
+  turns a word you keep saying into a fixed procedure. A <strong>subagent</strong> is a second agent
+  the first one starts for a piece of work, with its own context. <code>CLAUDE.md</code> is the file
+  Claude Code reads automatically at the start of every session. The <strong>repository</strong> is
+  the project folder, tracked by git — in this document, the workspace.</p>
+
+  <p class="note" style="margin-top:1.6mm; max-width:174mm;">Everything after this is one of these
+  four facts, met with one small mechanism, built only after the fact has cost you something.</p>
+
+<!-- ===================== 00b ===================== -->
+  <div class="sechead" style="margin-top:3.5mm;">
+    <span class="n">00b</span><h2>What changes for you</h2>
+  </div>
+
+  <p class="deck" style="margin-bottom:4mm; max-width:174mm; font-size:10.4pt;">The mechanisms are
+  the agent's. The habits are yours, and each one is harder than it looks, because the old way feels
+  faster right up until it costs you.</p>
+
+  <div class="cols2" style="gap:2.4mm 8mm; font-size:8.4pt; line-height:1.44;">
+    <p><strong>You are the judge, not the builder.</strong> Of the ten steps in a change, two are
+    yours, and they are both a yes or a no. The agent verifies — did it behave as specified. You validate — was the specification the right thing. It holds when you spend your time reading reports with output pasted in, and can say no to a finished build without feeling you wasted it.</p>
+    <p><strong>Never accept &quot;done&quot; without the output.</strong> The report is fluent,
+    confident and usually right, so checking feels rude. The one time in ten it is wrong is the one
+    that costs a day.</p>
+    <p><strong>Say what must not be built. Keep saying it.</strong> A non-goal never becomes
+    &quot;done&quot; — it just holds, quietly, until you delete the line. That it feels dull to say
+    no is not a change in reality.</p>
+    <p><strong>Formulate before you build.</strong> What was never formulated can never be judged;
+    you end up assessing whatever happened. Every task carries one sentence that says what
+    &quot;done&quot; will look like, written before the first line of code.</p>
+    <p><strong>Write decisions down where you make them.</strong> A decision made in conversation
+    feels made. It is gone at the next session, and the agent will re-open it — politely, and with
+    good arguments.</p>
+    <p><strong>Build a mechanism only after the failure.</strong> For every hook, skill and rule you
+    have, you can name the incident that caused it. Once if it was expensive, twice if it was cheap — otherwise not at all. And before adding one, ask whether the failure came from the mechanism's absence or from a bad specification, boundary, tool or model — a hook does not fix a vague brief.</p>
+    <p><strong>Treat what the agent reads from outside as data, not orders.</strong> A pasted note, a
+    fetched page, a colleague's message all look like text. To an agent with tools in hand they can
+    read as instructions. Say so in <code>CLAUDE.md</code>.</p>
+    <p><strong>Distrust your own description of the system.</strong> You wrote it, it was true when
+    you wrote it, and it flatters you by default. Before you tell anyone what your setup does, check
+    it against what actually ran.</p>
+  </div>
+
+  <div class="panel tint" style="margin-top:4mm; padding:3.6mm 4mm;">
+    <p style="font-size:9pt; line-height:1.5;">Two numbers to keep in mind even if you measure
+    nothing else: how many decisions in each round of work can only be made by you — the loop scales
+    with that number, and it grows quietly — and how many of your rules would stop holding without
+    anyone noticing. Those are habits. They are fine, as long as you know that is what they are.</p>
+  </div>
+
+<!-- ===================== 01 ===================== -->
+  <div class="sechead" style="margin-top:3mm; margin-bottom:3.2mm;">
+    <span class="n">01</span><h2>The build order</h2>
+  </div>
+
+  <p class="oneline" style="max-width:172mm; margin-bottom:3mm; font-size:12.4pt;">Each stage is
+  useful on its own; none requires the next. Stage 1 is for almost everyone. Stages 2&ndash;6 are for
+  the day something specific goes wrong &mdash; not before.</p>
+
+  <div class="figbox" style="margin-top:0; margin-bottom:1mm; max-width:158mm;">
+    <svg viewBox="0 0 673 220" xmlns="http://www.w3.org/2000/svg">
+      <g font-family="Menlo, monospace">
+      <rect x="0" y="0" width="103" height="72" rx="3" fill="#e3ede7" stroke="#2f6b58" stroke-width="1"/>
+      <text x="10" y="22" font-size="6.6" letter-spacing="1" fill="#2f6b58">STAGE 01</text>
+      <text x="10" y="48" font-size="10" fill="#1a1c1b">The core</text>
+
+      <rect x="114" y="0" width="103" height="72" rx="3" fill="#fff" stroke="#cfd5cf" stroke-width="1"/>
+      <text x="124" y="22" font-size="6.6" letter-spacing="1" fill="#8a918b">STAGE 02</text>
+      <text x="124" y="48" font-size="10" fill="#1a1c1b">One gate</text>
+
+      <rect x="228" y="0" width="103" height="72" rx="3" fill="#fff" stroke="#cfd5cf" stroke-width="1"/>
+      <text x="238" y="22" font-size="6.6" letter-spacing="1" fill="#8a918b">STAGE 03</text>
+      <text x="238" y="48" font-size="10" fill="#1a1c1b">Memory</text>
+
+      <rect x="342" y="0" width="103" height="72" rx="3" fill="#fff" stroke="#cfd5cf" stroke-width="1"/>
+      <text x="352" y="22" font-size="6.6" letter-spacing="1" fill="#8a918b">STAGE 04</text>
+      <text x="352" y="48" font-size="10" fill="#1a1c1b">Subagents</text>
+
+      <rect x="456" y="0" width="103" height="72" rx="3" fill="#fff" stroke="#cfd5cf" stroke-width="1"/>
+      <text x="466" y="22" font-size="6.6" letter-spacing="1" fill="#8a918b">STAGE 05</text>
+      <text x="466" y="48" font-size="10" fill="#1a1c1b">Unattended</text>
+      <text x="466" y="62" font-size="10" fill="#1a1c1b">work</text>
+
+      <rect x="570" y="0" width="103" height="72" rx="3" fill="#fff" stroke="#cfd5cf" stroke-width="1"/>
+      <text x="580" y="22" font-size="6.6" letter-spacing="1" fill="#8a918b">STAGE 06</text>
+      <text x="580" y="48" font-size="10" fill="#1a1c1b">Measure</text>
+      <text x="580" y="62" font-size="10" fill="#1a1c1b">yourself</text>
+
+      <g font-size="6.8" letter-spacing="1" fill="#8a918b">
+        <text x="0" y="100">TRIGGER</text><text x="114" y="100">TRIGGER</text><text x="228" y="100">TRIGGER</text>
+        <text x="342" y="100">TRIGGER</text><text x="456" y="100">TRIGGER</text><text x="570" y="100">TRIGGER</text>
+      </g>
+      <g font-family="Avenir Next, sans-serif" font-size="8" font-style="italic" fill="#3e4542">
+        <text x="0" y="116">you are using an agent</text><text x="0" y="129">on something you care</text><text x="0" y="142">about</text>
+        <text x="114" y="116">a rule in CLAUDE.md</text><text x="114" y="129">has been ignored once</text>
+        <text x="228" y="116">you have re-explained</text><text x="228" y="129">the same context twice</text>
+        <text x="342" y="116">one session no longer</text><text x="342" y="129">has room to both build</text><text x="342" y="142">and judge</text>
+        <text x="456" y="116">you want work done</text><text x="456" y="129">while not watching</text>
+        <text x="570" y="116">you wrote a number</text><text x="570" y="129">about your own system</text><text x="570" y="142">by hand</text>
+      </g>
+      <g font-size="6.8" letter-spacing="1" fill="#8a918b">
+        <text x="0" y="172">COST</text><text x="114" y="172">COST</text><text x="228" y="172">COST</text>
+        <text x="342" y="172">COST</text><text x="456" y="172">COST</text><text x="570" y="172">COST</text>
+      </g>
+      <g font-size="8.6" fill="#2f6b58">
+        <text x="0" y="187">an afternoon</text><text x="114" y="187">an hour</text><text x="228" y="187">half a day</text>
+        <text x="342" y="187">a day</text><text x="456" y="187">days</text><text x="570" y="187">hours</text>
+      </g>
+      <line x1="0" y1="206" x2="673" y2="206" stroke="#d9ded9" stroke-width="0.7"/>
+      </g>
+    </svg>
+    <div class="figcap">Fig. 3 — six stages, each with its trigger. Start at 01. Let the next failure tell you which stage comes next.</div>
+  </div>
+
+  <table class="dense" style="margin-top:1.5mm; margin-bottom:2.5mm;">
+    <tr><th>Stage</th><th>01 The core</th><th>02 One gate</th><th>03 Memory</th><th>04 Subagents</th><th>05 Unattended work</th><th>06 Measure yourself</th></tr>
+    <tr><td class="note"><strong style="color:#3e4542;">Trigger</strong></td>
+        <td class="note">you are using an agent on something you care about</td>
+        <td class="note">a rule in CLAUDE.md has been ignored once</td>
+        <td class="note">you have re-explained the same context twice</td>
+        <td class="note">one session no longer has room to both build and judge</td>
+        <td class="note">you want work done while not watching</td>
+        <td class="note">you wrote a number about your own system by hand</td></tr>
+    <tr><td class="note"><strong style="color:#3e4542;">Cost</strong></td>
+        <td class="num g">an afternoon</td><td class="num g">an hour</td><td class="num g">half a day</td>
+        <td class="num g">a day</td><td class="num g">days</td><td class="num g">hours</td></tr>
+    <tr><td class="note"><strong style="color:#3e4542;">You get</strong></td>
+        <td class="note">an agent that starts warm, stays inside the repo, and cannot quietly claim to be finished</td>
+        <td class="note">one rule that can no longer be forgotten — by you or the agent</td>
+        <td class="note">sessions that start warm; lessons that outlive the session that learned them</td>
+        <td class="note">work done in parallel, and a main session that can still say no</td>
+        <td class="note">work done while you are not watching, on a branch you can throw away</td>
+        <td class="note">a description of your own system that you can check instead of believe</td></tr>
+  </table>
+
+  <h3 style="font-size:9.2pt; margin-bottom:0.8mm;">You will recognise yourself in what you notice, not in the mechanisms</h3>
+  <table class="dense" style="font-size:7.6pt;">
+    <tr><th>What you notice</th><th style="width:66mm;">Which stage</th></tr>
+    <tr><td>The agent starts every session knowing nothing and you explain the project again</td><td class="num g">stage 03</td></tr>
+    <tr><td>It reports &quot;done&quot; on work it never ran</td><td class="num g">stage 01 the habit, then 02 the gate</td></tr>
+    <tr><td>It built a dashboard, a config layer and four folders nobody asked for</td><td class="num g">stage 01 the non-goals</td></tr>
+    <tr><td>It read, or wrote, far outside the project</td><td class="num g">stage 01 the boundary, then 02</td></tr>
+    <tr><td>The same fact lives in two files and they disagree</td><td class="num g">stage 01 — status never in CLAUDE.md</td></tr>
+    <tr><td>Your main session is so full it can no longer judge its own output</td><td class="num g">stage 04</td></tr>
+    <tr><td>A rule that used to hold quietly stopped holding</td><td class="num g">stage 02 — it was a habit, not a gate</td></tr>
+    <tr><td>You cannot tell if what you are reading about the system is measured or remembered</td><td class="num g">stage 06</td></tr>
+  </table>
+
+  <p style="margin-top:2mm; max-width:174mm; font-size:8.4pt; line-height:1.44;">Two words recur below.
+  A <strong>gate</strong> is enforced by the machinery; forgetting it is impossible. A
+  <strong>habit</strong> is held only by routine, and habits fail silently — that is their defining
+  property. Build gates for the rules that have already bitten you. Accept the rest as habits,
+  knowingly.</p>
+
+<!-- ===================== 02 (BREAK) ===================== -->
+  <div class="sechead brk">
+    <span class="n">02</span><h2>The core — one repo, four files, one habit</h2>
+  </div>
+  <p class="stagelede" style="margin-bottom:2.2mm;">The only mandatory stage. An afternoon, then
+  about two minutes per session. You get an agent that starts warm, stays inside the repo, and
+  cannot quietly claim to be finished.</p>
+
+  <div class="figbox" style="margin-top:0; margin-bottom:2.5mm; max-width:180mm;">
+    <svg viewBox="0 0 673 268" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="ah" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M0,0 L8,4 L0,8 z" fill="#8a918b"/>
+        </marker>
+        <marker id="ahg" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M0,0 L8,4 L0,8 z" fill="#2f6b58"/>
+        </marker>
+      </defs>
+      <g font-family="Menlo, monospace">
+
+      <rect x="0" y="12" width="673" height="160" rx="3" fill="none" stroke="#cfd5cf" stroke-width="1"/>
+      <text x="0" y="6" font-size="8" letter-spacing="1.5" fill="#2f6b58">THE CORE</text>
+      <text x="14" y="30" font-size="7.8" letter-spacing="1.2" fill="#1a1c1b">ONE REPOSITORY — THE WORKSPACE. CLAUDE CODE IS STARTED INSIDE IT.</text>
+
+      <rect x="14" y="40" width="153" height="46" rx="3" fill="#f8f7f4" stroke="#e2e5e0" stroke-width="0.8"/>
+      <text x="26" y="58" font-size="9" fill="#1a1c1b">CLAUDE.md</text>
+      <text x="26" y="73" font-size="7.4" font-family="Avenir Next, sans-serif" fill="#8a918b">instructions</text>
+
+      <rect x="178" y="40" width="153" height="46" rx="3" fill="#f8f7f4" stroke="#e2e5e0" stroke-width="0.8"/>
+      <text x="190" y="58" font-size="9" fill="#1a1c1b">NON-GOALS.md</text>
+      <text x="190" y="73" font-size="7.4" font-family="Avenir Next, sans-serif" fill="#8a918b">what never gets built</text>
+
+      <rect x="342" y="40" width="153" height="46" rx="3" fill="#f8f7f4" stroke="#e2e5e0" stroke-width="0.8"/>
+      <text x="354" y="58" font-size="9" fill="#1a1c1b">STATE.md</text>
+      <text x="354" y="73" font-size="7.4" font-family="Avenir Next, sans-serif" fill="#8a918b">four lines, rewritten every session</text>
+
+      <rect x="506" y="40" width="153" height="46" rx="3" fill="#f8f7f4" stroke="#e2e5e0" stroke-width="0.8"/>
+      <text x="518" y="58" font-size="9" fill="#1a1c1b">LESSONS.md</text>
+      <text x="518" y="73" font-size="7.4" font-family="Avenir Next, sans-serif" fill="#8a918b">empty today</text>
+
+      <text x="14" y="107" font-size="7.4" letter-spacing="1.2" fill="#2f6b58">AND ONE HABIT</text>
+
+      <rect x="93" y="114" width="140" height="22" rx="3" fill="#fff" stroke="#2f6b58" stroke-width="0.9"/>
+      <text x="163" y="129" font-size="8.2" fill="#1a1c1b" text-anchor="middle">read STATE first</text>
+      <rect x="267" y="114" width="140" height="22" rx="3" fill="#fff" stroke="#cfd5cf" stroke-width="0.9"/>
+      <text x="337" y="129" font-size="8.2" fill="#1a1c1b" text-anchor="middle">work</text>
+      <rect x="441" y="114" width="140" height="22" rx="3" fill="#fff" stroke="#2f6b58" stroke-width="0.9"/>
+      <text x="511" y="129" font-size="8.2" fill="#1a1c1b" text-anchor="middle">update STATE last</text>
+
+      <line x1="233" y1="125" x2="261" y2="125" stroke="#2f6b58" stroke-width="0.9" marker-end="url(#ahg)"/>
+      <line x1="407" y1="125" x2="435" y2="125" stroke="#2f6b58" stroke-width="0.9" marker-end="url(#ahg)"/>
+      <path d="M511,136 L511,153 L163,153 L163,139" fill="none" stroke="#2f6b58" stroke-width="0.9"
+            stroke-dasharray="3 3" marker-end="url(#ahg)"/>
+      <text x="595" y="128" font-size="7.2" font-family="Avenir Next, sans-serif" fill="#8a918b">two minutes</text>
+      <text x="595" y="139" font-size="7.2" font-family="Avenir Next, sans-serif" fill="#8a918b">a session</text>
+
+      <g opacity="0.45">
+        <rect x="0" y="196" width="200" height="42" rx="3" fill="none" stroke="#8a918b" stroke-width="0.9" stroke-dasharray="4 3"/>
+        <text x="16" y="214" font-size="8.6" fill="#1a1c1b">a gate</text>
+        <text x="16" y="228" font-size="7.2" font-family="Avenir Next, sans-serif" fill="#8a918b">stage 02</text>
+
+        <rect x="236" y="196" width="200" height="42" rx="3" fill="none" stroke="#8a918b" stroke-width="0.9" stroke-dasharray="4 3"/>
+        <text x="252" y="214" font-size="8.6" fill="#1a1c1b">memory hook</text>
+        <text x="252" y="228" font-size="7.2" font-family="Avenir Next, sans-serif" fill="#8a918b">stage 03</text>
+
+        <rect x="472" y="196" width="201" height="42" rx="3" fill="none" stroke="#8a918b" stroke-width="0.9" stroke-dasharray="4 3"/>
+        <text x="488" y="214" font-size="8.6" fill="#1a1c1b">subagents</text>
+        <text x="488" y="228" font-size="7.2" font-family="Avenir Next, sans-serif" fill="#8a918b">stage 04</text>
+
+        <line x1="0" y1="184" x2="673" y2="184" stroke="#8a918b" stroke-width="0.8" stroke-dasharray="4 3"/>
+      </g>
+      <text x="0" y="258" font-size="7.4" letter-spacing="1.1" fill="#8a918b">BUILT LATER, EACH AFTER ITS OWN FAILURE</text>
+      </g>
+    </svg>
+    <div class="figcap">Fig. 2 — the core is four files and one habit. The rest is optional and stays that way until something breaks.</div>
+  </div>
+
+  <div class="prose" style="max-width:174mm;">
+  <p style="font-size:8.2pt; line-height:1.4; margin-bottom:1.6mm;"><strong>The boundary.</strong> One repository is the workspace.
+  Claude Code is started <strong>inside it</strong>, never from the home folder. Anything the agent
+  needs to see lives in the repo; anything it must not touch does not. An agent started from the
+  wrong folder can read — and write — anywhere on the machine it has access to. That is not a bug in
+  the agent; it is the absence of a boundary. So: <code>cd</code> into the repo before
+  <code>claude</code>. Personal rules go in <code>~/.claude/CLAUDE.md</code>, project rules in
+  <code>&lt;repo&gt;/CLAUDE.md</code>. Make &quot;never write outside this repository&quot; the first
+  non-goal. Stage 2 turns it into a gate.</p>
+
+  <p style="font-size:8.2pt; line-height:1.4;"><strong>One instruction file.</strong> <code>CLAUDE.md</code> in the repo root: everything an
+  agent must know about working <em>here</em>. Short — a long instruction file is read the way you
+  read a licence agreement. The file, in full, is below. Resist adding to it. The mistake almost
+  everyone makes is putting status in <code>CLAUDE.md</code>: &quot;Currently working on X&quot; is
+  true for a week and then it is a lie the agent believes. Status goes in <code>STATE.md</code> and
+  nowhere else.</p>
+  </div>
+
+  <div class="codeblk" style="margin-top:2.6mm;">
+    <div class="humanline">For your AI — copy verbatim. A human reader can skim it: it is the four
+    rules above, written down.</div>
+    <div class="filehead">CLAUDE.md</div>
+<pre class="code" style="font-size:6.1pt; line-height:1.06;"># CLAUDE.md
+## What this is
+&lt;one paragraph: what the project is for — not how it works&gt;
+## Non-goals
+See NON-GOALS.md. That file wins.
+If a task touches one of them: stop and ask. Never change it quietly.
+## Prime directives
+1. No unverifiable claims. Every statement about state must be
+   derivable from the filesystem, git, or the database.
+2. Nothing is "done" until verification has run and its output
+   is quoted — not summarised. The check must exercise the claim.
+3. Report before any bulk delete, move or rename.
+## Rhythm
+Read STATE.md first. Update it last. Four lines are enough.
+Lessons go in LESSONS.md, never here. Status never goes here.</pre>
+  </div>
+
+  <div class="cols2" style="gap:0 8mm; margin-top:2mm;">
+    <div>
+      <p style="font-size:8pt; line-height:1.36; margin-bottom:1.2mm;"><strong>Non-goals, not just
+      goals.</strong> <code>NON-GOALS.md</code> holds standing negative requirements, as important
+      as the goals. A goal is met and closed; a non-goal holds until someone deletes the line. Write
+      them concretely enough to check — five lines is plenty.</p>
+      <div class="codeblk">
+        <div class="humanline">For your AI — copy verbatim.</div>
+        <div class="filehead">NON-GOALS.md</div>
+<pre class="code wrap" style="font-size:6.4pt; line-height:1.24;"># NON-GOALS.md
+Standing negative requirements. A goal is met
+and closed; a non-goal holds until someone
+deletes the line. This file wins over anything
+CLAUDE.md says.
+
+- Never write outside this repository.
+- Nothing is published, deployed or paid for
+  without me saying so.
+- No new dependencies without asking.
+- No background services.
+- No more than three skills.</pre>
+      </div>
+    </div>
+    <div>
+      <p style="font-size:8pt; line-height:1.36; margin-bottom:1.2mm;"><strong>A rolling status
+      file.</strong> <code>STATE.md</code> is four lines, rewritten every session: last done, in
+      progress, next, blocked. Context windows run out and sessions die; this file is the one thing
+      you control that survives both. Git holds the history — it is not a changelog.</p>
+      <div class="codeblk" style="margin-bottom:1.4mm;">
+        <div class="filehead">STATE.md</div>
+<pre class="code wrap" style="font-size:6.2pt; line-height:1.2;">Last done:   &lt;what the previous session finished&gt;
+In progress: &lt;what is half-built right now&gt;
+Next:        &lt;the one thing to do next&gt;
+Blocked:     &lt;what is waiting on someone, or nothing&gt;</pre>
+      </div>
+      <p style="font-size:8pt; line-height:1.36;"><strong>Lessons.</strong> <code>LESSONS.md</code>.
+      Empty today — one header line, nothing under it. You will want it by week three; the format is
+      in stage 3.</p>
+    </div>
+  </div>
+
+  <div class="prose" style="max-width:174mm; margin-top:1.6mm;">
+  <p style="font-size:8pt; line-height:1.36; margin-bottom:1mm;"><strong>The habit.</strong> Read status first, update it last, and
+  never accept &quot;done&quot; without the command output pasted in. Two minutes a session. The
+  four files do nothing on their own — a status file nobody reads is a file; a rule nobody checks is
+  a wish. The habit is what makes the files live, and it is the only part of stage 1 that cannot be
+  copied, only kept. When it slips, stages 2 and 3 exist to take it over. <em style="color:#7d857f;">That is the whole stage.</em></p>
+<p>&quot;Output pasted&quot; is necessary, not sufficient: a command that ran is not a check, and a command that passed proves only what it exercised. <code>python -m compileall .</code> passing says nothing about whether the export works. So the claim comes first, then the check that would exercise it, then the output. Five lines, in the report:</p>
+<div class="codeblk" style="max-width:120mm"><pre class="code">Claim:    export produces a playable MP4
+Check:    run the export test and open the file
+Command:  pytest tests/test_export.py -q
+Output:   1 passed in 0.8s
+Result:   verified</pre></div>
+<p>If the check does not exercise the claim, the task is unverified, however green the output.</p>
+  </div>
+
+<!-- ===================== 03 (BREAK) ===================== -->
+  <div class="sechead brk">
+    <span class="n">03</span><h2>One gate — pick the rule that has already bitten you</h2>
+  </div>
+  <p class="stagelede">Only that one. Trigger: a rule in CLAUDE.md has been ignored at least once.
+  Cost: an hour per rule, plus a test.</p>
+
+  <div class="prose" style="max-width:174mm;">
+  <p><strong>A rule in a prompt is a request; a rule in a hook is a boundary.</strong> Convert
+  exactly one rule into a Claude Code hook. Usually twenty lines. The twenty lines are not the hard
+  part — knowing which rule deserves them is. Choose by evidence, not by importance: the rule to
+  convert first is the one you have watched fail, not the one that sounds most serious.</p>
+  <p>Decide the failure direction before writing it. A gate guarding something irreversible fails
+  <strong>closed</strong> — if it cannot parse the situation, it blocks. A hook that merely observes
+  must <strong>never</strong> fail the operation it observes. These are opposite behaviours, and the
+  same code path gets both wrong at once.</p>
+  <p>The first gate, in full, is a write-tool fence: before the agent writes any file, this script
+  checks the file is inside the project; if not, it refuses and tells the agent why.</p>
+  </div>
+
+  <div class="cols2" style="gap:0 8mm; margin-top:4mm;">
+    <div class="codeblk">
+      <div class="humanline">For your AI — copy verbatim.</div>
+      <div class="filehead">.claude/settings.json</div>
+<pre class="code">{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          { "type": "command",
+            "command": "python3 .claude/hooks/fence.py" }
+        ]
+      }
+    ]
+  }
+}</pre>
+    </div>
+    <div class="codeblk">
+      <div class="filehead">.claude/hooks/fence.py</div>
+<pre class="code wrap" style="font-size:6.3pt; line-height:1.26;"><span class="cm"># Runs before every file write. Two properties matter
+# more than the logic:
+#   1. it fails CLOSED  - unparseable input blocks, loudly
+#   2. it is boring     - no network, no state, no cleverness</span>
+import json, os, sys
+try:
+    data = json.load(sys.stdin)
+    path = data.get("tool_input", {}).get("file_path")
+except Exception:
+    path = None
+root = os.path.realpath(os.getcwd())
+if not path:
+    print("fence: cannot determine target path", file=sys.stderr)
+    sys.exit(2)                       <span class="cm"># exit 2 = block</span>
+real = os.path.realpath(path)
+if not real.startswith(root + os.sep):
+    print(f"fence: {path} is outside the repository", file=sys.stderr)
+    sys.exit(2)
+sys.exit(0)                           <span class="cm"># allow</span></pre>
+    </div>
+  </div>
+
+  <p style="margin-top:4mm; max-width:174mm; font-size:8.6pt; line-height:1.5;">Exit code 2 blocks
+  the tool call and shows the message to the model; exit 0 allows. On Windows the interpreter is
+  usually <code>python</code>, not <code>python3</code> — change the command accordingly. <strong>This is a repository write fence, not a security sandbox.</strong> It protects the file-writing tools — Edit, Write, MultiEdit — and nothing else: a shell command, a subprocess, a script that writes files, an external service all pass it untouched. Pair it with the cheaper check: <code>git status</code> before and after a job. The two cover different holes.</p>
+
+  <div class="prose" style="max-width:174mm; margin-top:3mm;">
+  <p><strong>Verify the mechanism, not the intention.</strong> Test the gate once with the gate
+  switched off. Permission lists and deny-rules do not apply in every execution mode, and a test can
+  pass because an unrelated rule happened to produce the same result. Disable the hook, ask the
+  agent to write one line to a file outside the repo, confirm it succeeds. Re-enable, repeat,
+  confirm it is blocked. If the failure never occurred with the gate off, the gate is decoration —
+  and you learned it for the price of one experiment, not one incident.</p>
+  <p>The same applies to any check that has never failed. Possibly nothing is wrong. Possibly the
+  check cannot fail. Run it once with the thing it guards deliberately broken. If it still passes,
+  delete it — it was costing confidence you had not earned.</p>
+  </div>
+
+<!-- ===================== 04 (BREAK) ===================== -->
+  <div class="sechead brk">
+    <span class="n">04</span><h2>Memory — automate the reading, not the writing</h2>
+  </div>
+  <p class="stagelede">The best return per hour. Trigger: you have re-explained the same project
+  twice. Cost: half a day.</p>
+
+  <div class="prose" style="max-width:174mm;">
+  <p><strong>Inject STATE at session start.</strong> A SessionStart hook prints <code>STATE.md</code>
+  — and any lesson above threshold — to stdout, and Claude Code injects it as context. Relying on
+  the agent to remember to read a file puts you back in stage 1; the hook is the harness, not the
+  model. Two properties separate an injection that helps from one that causes damage: stamp it as
+  reference, not instruction — injected text arrives looking exactly like a command — and filter it,
+  because everything you ever learned is too much.</p>
+  <p>Writing the file is still yours. A summary written by the thing being summarised is worth less
+  than four lines you approved.</p>
+  </div>
+
+  <div class="cols2" style="gap:0 8mm; margin-top:3.5mm;">
+    <div class="codeblk">
+      <div class="humanline">For your AI — copy verbatim. Add the SessionStart block to the same
+      settings file as the fence.</div>
+      <div class="filehead">.claude/settings.json</div>
+<pre class="code">"SessionStart": [
+  { "hooks": [ { "type": "command",
+                 "command": "python3 .claude/hooks/warm-start.py" } ] }
+]</pre>
+    </div>
+    <div class="codeblk">
+      <div class="filehead">.claude/hooks/warm-start.py</div>
+<pre class="code wrap" style="font-size:6.6pt; line-height:1.28;"><span class="cm"># Opposite rule from the fence: this must NEVER break the
+# session it is attached to. Swallow everything, exit 0 always.</span>
+import re
+try:
+    print("== CONTEXT, NOT ORDERS. Verify files still exist before acting. ==")
+    print(open("STATE.md").read())
+    text = open("LESSONS.md").read()
+    for block in text.split("\n### ")[1:]:
+        m = re.search(r"confidence:\s*([0-9.]+)", block)
+        if m and float(m.group(1)) >= 0.7:
+            print("### " + block.strip())
+except Exception:
+    pass
+raise SystemExit(0)</pre>
+    </div>
+  </div>
+
+  <div class="prose" style="max-width:174mm; margin-top:3.5mm;">
+  <p><strong>The wrap-up — a skill, not a hook.</strong> One word at the end of a session,
+  <code>/wrap</code>, runs a fixed procedure: rewrite <code>STATE.md</code>, write down anything
+  learned in the lesson format below, and list what was claimed done without output pasted. Reading
+  is automated at start; writing is deliberate at end. &quot;Update STATE last&quot; is the first
+  habit to slip — the session ends when the work feels done, not when the file is written — and a
+  skill turns the slip into a word you say. Do not make this a hook.</p>
+  </div>
+
+  <div class="cols2" style="gap:0 8mm; margin-top:3mm;">
+    <div class="codeblk">
+      <div class="humanline">For your AI — copy verbatim. This file tells the agent what &quot;wrap&quot;
+      means. You say the word; it does these four things and stops.</div>
+      <div class="filehead">.claude/skills/wrap/SKILL.md</div>
+<pre class="code" style="font-size:6.6pt; line-height:1.2;">---
+name: wrap
+description: End the session. Rewrite STATE.md,
+  harvest lessons, list unverified claims.
+---
+1. Rewrite STATE.md to exactly four lines: last
+   done / in progress / next / blocked. Derive
+   them from this session's actual work, not from
+   the previous STATE.md.
+2. If something was learned that would change how
+   the next session acts, append it to LESSONS.md
+   in the L-format (trigger, confidence, action,
+   evidence). Confidence 0.5 unless there is
+   evidence for more. Do not append opinions.
+3. List every task reported "done" in this session where the verification
+   output was not pasted, or where the check did not exercise the claim.
+   Say so plainly. Do not fix them now.
+4. Show me the new STATE.md and stop. Do not commit.</pre>
+    </div>
+    <div>
+      <p style="font-size:8.4pt; line-height:1.46; margin-bottom:2.6mm;"><strong>A lesson, in the
+      format that makes filtering possible.</strong> Without a number, a lessons file becomes a
+      diary nobody reads. With one it becomes a filterable queue: &ge; 0.7 is injected
+      automatically, &ge; 0.8 is a candidate to become a skill, &lt; 0.5 is parked. Confirmed by
+      outcome +0.05, contradicted &minus;0.1. The numbers are arbitrary and confidence is an operational score, not a probability; that the score gates behaviour is not arbitrary. Do the arithmetic by hand, when you harvest. Do not build a learning engine — a scoring
+      daemon is a second system to maintain and gains nothing.</p>
+      <div class="codeblk">
+<pre class="code" style="font-size:6.6pt; line-height:1.2;">### L004 - the vendor letterboxes silently
+- trigger:    uploading one artwork against
+              several product sizes
+- confidence: 0.9
+Action:  pad the background to each ratio;
+         never re-generate.
+Evidence: 2026-07 - one 2:3 file matched no
+         size; eight orders shipped wrong.</pre>
+      </div>
+    </div>
+  </div>
+
+<!-- ===================== 05 (BREAK) ===================== -->
+  <div class="sechead brk">
+    <span class="n">05</span><h2>Subagents — keep the main session's context for judging</h2>
+  </div>
+  <p class="stagelede">When one session cannot both build and judge. Cost: a day to learn the
+  rhythm; nothing to install.</p>
+
+  <div class="prose" style="max-width:174mm;">
+  <p>The main session does not build. It reasons, splits the work, writes a brief to a file, and
+  delegates. It reads only what it needs to judge the result — a session that has read the whole codebase in order to build has no room left to judge what it built, and judging is the one thing it cannot hand off. The subagent reads the brief; the main session sees only the
+  report.</p>
+  <p>Agents working at once own separate files or folders. The main session never touches a file an
+  agent owns, and never sends two agents to the same one. Two writers in one file is a silent loss:
+  the last one wins and nobody sees what vanished. Decide the split before starting, in the
+  brief.</p>
+  </div>
+
+  <div class="figbox" style="margin-top:2.6mm;">
+    <svg viewBox="0 -10 673 158" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="ah3" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M0,0 L8,4 L0,8 z" fill="#8a918b"/>
+        </marker>
+        <marker id="ahg3" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M0,0 L8,4 L0,8 z" fill="#2f6b58"/>
+        </marker>
+      </defs>
+      <g font-family="Menlo, monospace">
+
+      <rect x="0" y="36" width="170" height="68" rx="3" fill="#f8f7f4" stroke="#2f6b58" stroke-width="1"/>
+      <text x="14" y="53" font-size="9" fill="#1a1c1b">main session</text>
+      <g font-family="Avenir Next, sans-serif" font-size="7.2" fill="#7d857f">
+        <text x="14" y="68">reasons</text>
+        <text x="14" y="79">writes brief.md</text>
+        <text x="14" y="90">judges</text>
+        <text x="14" y="101">does not read the sources</text>
+      </g>
+
+      <rect x="214" y="59" width="92" height="22" rx="3" fill="#fff" stroke="#cfd5cf" stroke-width="0.9"/>
+      <text x="260" y="74" font-size="8.4" fill="#1a1c1b" text-anchor="middle">brief.md</text>
+      <line x1="170" y1="70" x2="208" y2="70" stroke="#2f6b58" stroke-width="0.9" marker-end="url(#ahg3)"/>
+
+      <line x1="306" y1="70" x2="366" y2="19" stroke="#8a918b" stroke-width="0.8" marker-end="url(#ah3)"/>
+      <line x1="306" y1="70" x2="366" y2="70" stroke="#8a918b" stroke-width="0.8" marker-end="url(#ah3)"/>
+      <line x1="306" y1="70" x2="366" y2="121" stroke="#8a918b" stroke-width="0.8" marker-end="url(#ah3)"/>
+
+      <rect x="372" y="8" width="240" height="22" rx="3" fill="#fff" stroke="#cfd5cf" stroke-width="0.9"/>
+      <text x="386" y="23" font-size="8.6" fill="#1a1c1b">agent A</text>
+      <text x="452" y="23" font-size="7.4" font-family="Avenir Next, sans-serif" fill="#8a918b">file 1</text>
+
+      <rect x="372" y="59" width="240" height="22" rx="3" fill="#fff" stroke="#cfd5cf" stroke-width="0.9"/>
+      <text x="386" y="74" font-size="8.6" fill="#1a1c1b">agent B</text>
+      <text x="452" y="74" font-size="7.4" font-family="Avenir Next, sans-serif" fill="#8a918b">file 2</text>
+
+      <rect x="372" y="110" width="240" height="22" rx="3" fill="#fff" stroke="#cfd5cf" stroke-width="0.9"/>
+      <text x="386" y="125" font-size="8.6" fill="#1a1c1b">agent C</text>
+      <text x="452" y="125" font-size="7.4" font-family="Avenir Next, sans-serif" fill="#8a918b">review, read-only</text>
+
+      <line x1="612" y1="19" x2="640" y2="19" stroke="#2f6b58" stroke-width="0.8"/>
+      <line x1="612" y1="70" x2="640" y2="70" stroke="#2f6b58" stroke-width="0.8"/>
+      <line x1="612" y1="121" x2="640" y2="121" stroke="#2f6b58" stroke-width="0.8"/>
+      <path d="M640,19 L640,144 L88,144 L88,108" fill="none" stroke="#2f6b58" stroke-width="0.9" marker-end="url(#ahg3)"/>
+      <text x="176" y="140" font-size="7.4" fill="#2f6b58">report: what ran, output pasted</text>
+
+      <path d="M88,36 L88,0 L520,0 L520,4" fill="none" stroke="#8a918b" stroke-width="0.8"
+            stroke-dasharray="4 3" marker-end="url(#ah3)"/>
+      <text x="188" y="-4" font-size="7.4" fill="#8a918b">correction as a message</text>
+      </g>
+    </svg>
+    <div class="figcap">Fig. 4 — one session keeps its context for judging. The others spend theirs on building.</div>
+  </div>
+
+  <div class="prose" style="max-width:174mm; margin-top:2mm;">
+  <p>A subagent reports what it built, what it ran, the output pasted, what it could not check — and
+  says plainly if it could not verify. <em>&quot;Done&quot; is the most common lie.</em> A report
+  without a verification method is a claim, and a claim in the main session's context becomes truth
+  at the next step. Put the requirement in the brief, not afterwards. Spot-check the dangerous parts
+  with grep, not by reading everything.</p>
+  <p>Cheap model builds, expensive model judges. The heaviest model for planning, hard calls and
+  review; a mid-tier model for building; the fastest for routine. A wide fan-out on the heavy model
+  exhausts a session budget fast, and a fan-out that dies half-way is worse than one that never
+  started. Two narrow cheap agents feeding one expensive synthesis usually finishes inside
+  budget.</p>
+  <p>Correct by message, not restart. When the brief changes mid-build, change the file first, then
+  tell the running agent what changed and why — the reason lets it sweep the rest of its work for
+  the same mistake. An agent with a large context is expensive to throw away; a message costs a
+  line.</p>
+  <p><strong>Skills: one word, one procedure.</strong> A skill is a short file —
+  <code>.claude/skills/&lt;name&gt;/SKILL.md</code> — that turns a word you keep saying into a fixed
+  procedure. &quot;Think harder&quot; without a procedure produces more text, which is exactly what
+  you then reject. <code>wrap</code> is the first. Three skills at most until one has earned its
+  keep; a skill that is never invoked is a file.</p>
+  <p><strong>The gardener</strong> is a named pass — a subagent or a skill — that sweeps the repo's
+  notes and docs for duplicates, broken links, stale status lines and orphaned files. It reports
+  before it changes anything, and never touches folders marked untrusted. The trigger is the first
+  time you stopped trusting your own notes enough to read them. The entire gardener is one skill
+  file: <em>&quot;Sweep docs/ and *.md for duplicates, dead links, and status lines older than 14
+  days. List findings with file and line. Change nothing until I approve.&quot;</em> Anything more
+  is stage 5.</p>
+  </div>
+
+<!-- ===================== 06 (BREAK) ===================== -->
+  <div class="sechead brk">
+    <span class="n">06</span><h2 style="font-size:14.6pt;">Do not build this yet — and what each one gives you when it is time</h2>
+  </div>
+
+  <p style="margin-bottom:4.5mm; max-width:174mm; font-size:8.7pt; line-height:1.48;">Every item below
+  is real, useful, and in the source setup. Each one is also a thing to maintain, explain and work
+  around. None of them is justified by reading about it — each has the failure that would justify
+  it, and the gain that follows.</p>
+
+  <div class="posts" style="gap:3.4mm 8mm;">
+    <div>
+      <div class="ph" style="font-size:8.4pt;">A worktree fence for unattended jobs</div>
+      <div class="pb" style="font-size:7.9pt; line-height:1.4;">Every job on its own branch in its
+      own worktree, a hook blocking writes outside it.<br><em>Gives you:</em> an agent that can work
+      while you sleep, whose mistakes stay on a branch you can delete.<br><em>Build it when:</em> you
+      want an agent to work while you are not watching the diff, and you can say what you would do
+      if it produced something wrong at 3 a.m. If you have no answer, you are not ready.</div>
+    </div>
+    <div>
+      <div class="ph" style="font-size:8.4pt;">Two approvals — plan, then diff</div>
+      <div class="pb" style="font-size:7.9pt; line-height:1.4;">A read-only planning session before
+      any code exists.<br><em>Gives you:</em> misunderstandings caught for the price of a minute
+      instead of a build.<br><em>Build it when:</em> a build went the wrong direction and you found
+      out at the end.</div>
+    </div>
+    <div>
+      <div class="ph" style="font-size:8.4pt;">A council of blind seats</div>
+      <div class="pb" style="font-size:7.9pt; line-height:1.4;">Several personas answering in
+      parallel, none seeing another's answer, a chair synthesising one verdict.<br><em>Gives
+      you:</em> a second and third answer before the model argues for its first.<br><em>Build it
+      when:</em> a decision is genuinely expensive to reverse. Pure overhead everywhere else.</div>
+    </div>
+    <div>
+      <div class="ph" style="font-size:8.4pt;">A second model as reviewer</div>
+      <div class="pb" style="font-size:7.9pt; line-height:1.4;">A different vendor, read-only, one
+      fix round, findings need file + line + repro.<br><em>Gives you:</em> blind spots the writing
+      model cannot see, because it has them too.<br><em>Build it when:</em> the same class of bug
+      has passed your own review twice.</div>
+    </div>
+    <div>
+      <div class="ph" style="font-size:8.4pt;">A project template and a drift audit</div>
+      <div class="pb" style="font-size:7.9pt; line-height:1.4;"><em>Gives you:</em> the third project
+      set up like the first, and a way to see when it drifts.<br><em>Build it when:</em> you have set
+      up the same skeleton by hand three times. And know the trap: a template fixes a project's
+      birth and nothing after it.</div>
+    </div>
+    <div>
+      <div class="ph" style="font-size:8.4pt;">An instrument that measures your own system</div>
+      <div class="pb" style="font-size:7.9pt; line-height:1.4;">A read-only script that derives what
+      the system actually did from its own records.<br><em>Gives you:</em> numbers about your setup
+      you did not write by hand, and documents that quote them.<br><em>Build it when:</em> you wrote
+      a number about your own system by hand. Earlier than feels needed.</div>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-top:4mm; padding:3.4mm 3.8mm; max-width:174mm;">
+    <p style="font-size:8.2pt; line-height:1.44;"><strong>An <code>ARCHITECTURE.md</code></strong> — invariants and forbidden paths, not a tour of the files; the agent can read those itself. <em>Gives you:</em> the one thing it cannot infer safely — which boundaries matter. <em>Build it when:</em> the agent has bypassed a boundary once. In an existing, layered codebase that may be your first week; in a new repo it is a description of an intent nobody has tested yet.</p>
+<p style="font-size:8.2pt; line-height:1.44;"><strong>MCP servers and tool integrations</strong>
+    — also not yet. Every tool a model can see costs context whether or not it is used, and a badly
+    named tool is rarely called. Add a tool when a task has failed for lack of it, not when a
+    catalogue offers it.</p>
+  </div>
+
+<!-- ===================== 07 ===================== -->
+  <div class="sechead" style="margin-top:6mm;">
+    <span class="n">07</span><h2>Running it</h2>
+  </div>
+
+  <table class="tight">
+    <tr><th style="width:30mm;">When</th><th style="width:70mm;">What you do</th><th>What it prevents</th></tr>
+    <tr><td class="num">every session</td>
+        <td>Read <code>STATE.md</code> first, update it last — four lines, not a report.</td>
+        <td class="note">Re-explaining the project; an agent guessing at context it could have read.</td></tr>
+    <tr><td class="num">before &quot;done&quot;</td>
+        <td>Demand the verification output, pasted, not summarised.</td>
+        <td class="note">Work that was never run reported as complete.</td></tr>
+    <tr><td class="num">after a big change</td>
+        <td>Run the gardener; read the findings; approve or not.</td>
+        <td class="note">Notes turning into a landfill nobody trusts.</td></tr>
+    <tr><td class="num">when bitten twice</td>
+        <td>Convert the habit that failed into a gate — or write down that you chose not to.</td>
+        <td class="note">The same incident a third time, and a belief that a rule protects you when it does not.</td></tr>
+    <tr><td class="num">monthly</td>
+        <td>Read <code>NON-GOALS.md</code>; delete a line only on purpose.</td>
+        <td class="note">Scope creeping in through the side door.</td></tr>
+  </table>
+
+<!-- ===================== 08 ===================== -->
+  <div class="sechead" style="margin-top:6mm;">
+    <span class="n">08</span><h2>When it goes wrong</h2>
+  </div>
+
+  <p class="note" style="margin-bottom:2.4mm;">Symptom first, because that is what you will have.</p>
+
+  <table class="tight">
+    <tr><th style="width:44mm;">What you notice</th><th style="width:62mm;">What it usually is</th><th>What to do</th></tr>
+    <tr><td><strong>The agent keeps asking things it should know</strong></td>
+        <td class="note"><code>STATE.md</code> written but not read, or too long.</td>
+        <td class="note">Make reading it the first action, then automate it (stage 3). If it is already automatic: cut the file to four lines.</td></tr>
+    <tr><td><strong>&quot;Done&quot; turns out not to be done</strong></td>
+        <td class="note">No gate; verification is a request, and requests get optimised away under pressure.</td>
+        <td class="note">Require quoted output; then add a <code>Stop</code> hook that checks for a verification marker.</td></tr>
+    <tr><td><strong>Two files disagree about the same fact</strong></td>
+        <td class="note">No canonical location was chosen, so both are maintained.</td>
+        <td class="note">Pick one, link the other to it, mark the loser superseded — an unexplained deletion gets re-added.</td></tr>
+    <tr><td><strong>It built things nobody asked for</strong></td>
+        <td class="note">Vague non-goals; expansion is the default behaviour of a capable agent.</td>
+        <td class="note">Write non-goals concretely enough to check, and check them.</td></tr>
+    <tr><td><strong>It read or wrote outside the project</strong></td>
+        <td class="note">Started from the wrong folder; no fence.</td>
+        <td class="note">Start inside the repo; build the fence (stage 2).</td></tr>
+    <tr><td><strong>A fix stopped working and nothing said so</strong></td>
+        <td class="note">It was a habit, not a gate; habits fail silently.</td>
+        <td class="note">Convert it, or accept it consciously and add it to what you watch by hand.</td></tr>
+    <tr><td><strong>The whole thing feels heavy</strong></td>
+        <td class="note">Mechanisms accumulated faster than failures did.</td>
+        <td class="note">The panel below.</td></tr>
+  </table>
+
+  <div class="panel warn" style="margin-top:5mm; padding:3.6mm 3.8mm;">
+    <p style="font-size:8.4pt; line-height:1.46;"><strong>Keeping it from becoming the problem.</strong>
+    Every mechanism here exists to prevent a failure, and every mechanism is also a thing to
+    maintain. A system built to stop bloat becomes bloat faster than most, because each addition is
+    individually justified. Two rules keep it survivable. Name the failure or delete the mechanism —
+    once a quarter, for each item, say what goes wrong without it; if you cannot, it protects a worry
+    you used to have. And prefer deleting a habit to documenting it harder — a rule that keeps being
+    ignored is telling you something: either it matters, so make it a gate, or it does not, so
+    remove it.</p>
+  </div>
+
+  <div class="twocol" style="margin-top:5mm;">
+    <div>
+      <h4>Signs it is working</h4>
+      <ul>
+        <li>You can leave for a week and come back without re-reading the repo.</li>
+        <li>You have stopped reading every diff line by line, because you know what ran before it reached you.</li>
+        <li>When you make a claim about your own system, you check it first — and it holds.</li>
+      </ul>
+    </div>
+    <div>
+      <h4 style="color:#9b3d38;">Signs you have overbuilt</h4>
+      <ul>
+        <li>Mechanisms that have not triggered in a month and that you cannot tie to an incident.</li>
+        <li>You spend more time on the system than inside it.</li>
+        <li>New work routinely needs a workaround for one of your own gates.</li>
+        <li>You cannot say, for a given rule, what happens if it is forgotten.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="panel tint" style="margin-top:5.5mm; padding:4mm 4.2mm;">
+    <h3 style="font-size:9.6pt; margin-bottom:1.8mm;">To the AI reading this</h3>
+    <p class="quote" style="font-size:9pt; line-height:1.4;">Build stage 1: the four files and
+    the two-minute habit, inside the repository, exactly as written. Then stop. Do not build a gate,
+    a hook, a skill or a subagent workflow until the person you work for has named a failure that
+    happened. When they do, build the one mechanism that answers it — and test it once with the
+    mechanism switched off. Report what you built with the command output pasted, not
+    summarised.</p>
+  </div>
+
+  <p style="margin-top:5.5mm; font-family:'Iowan Old Style',Palatino,Georgia,serif; font-style:italic;
+     font-size:8.6pt; line-height:1.42; color:#7d857f; max-width:174mm;">The question under every rule
+  you are about to write down: what happens if this is forgotten? If the answer is &quot;nothing,
+  because it cannot be&quot;, you have built infrastructure. If it is &quot;it stops holding and
+  nothing announces it&quot;, you have written a habit — which is fine, as long as you know that is
+  what you have.</p>
+
+</td></tr></tbody>
+</table>
+</body>
+</html>

@@ -1,0 +1,14 @@
+{
+  "name": "done-is-a-lie",
+  "description": "Four files, one habit, and a rule about when to build anything more — as a Claude Code plugin.",
+  "owner": {
+    "name": "Hugo Fröjd"
+  },
+  "plugins": [
+    {
+      "name": "done-is-a-lie",
+      "source": "./plugin",
+      "description": "Four files, one habit, and a rule about when to build anything more. /done-is-a-lie:stage-1 puts the four files in your repo and stops; the gate and the memory hook ship inert until /stage-2 and /stage-3."
+    }
+  ]
+}

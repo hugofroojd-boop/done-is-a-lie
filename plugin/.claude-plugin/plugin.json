@@ -1,0 +1,9 @@
+{
+  "name": "done-is-a-lie",
+  "version": "0.1.0",
+  "description": "Four files, one habit, and a rule about when to build anything more. /done-is-a-lie:stage-1 puts the four files in your repo and stops. The gate and the memory hook ship inert; :stage-2 and :stage-3 turn them on — after the failure that earns them.",
+  "author": {
+    "name": "Hugo Fröjd"
+  },
+  "license": "MIT"
+}
